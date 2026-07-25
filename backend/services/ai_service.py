@@ -25,9 +25,38 @@ def test_ai():
     return response.choices[0].message.content
 
 
-def generate_notes(image_path):
+def generate_notes(data, is_text=False):
     try:
-        with open(image_path, "rb") as image_file:
+
+        # -------- PDF/Text --------
+        if is_text:
+            response = client.chat.completions.create(
+                model="openrouter/free",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"""
+You are an AI Study Assistant.
+
+The following is text extracted from a PDF:
+
+{data}
+
+Generate:
+1. Easy-to-understand notes.
+2. Short summary.
+3. Important key points.
+
+Explain everything in simple language for students.
+"""
+                    }
+                ]
+            )
+
+            return response.choices[0].message.content
+
+        # -------- Image --------
+        with open(data, "rb") as image_file:
             image_base64 = base64.b64encode(image_file.read()).decode("utf-8")
 
         response = client.chat.completions.create(
