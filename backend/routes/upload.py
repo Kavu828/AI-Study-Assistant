@@ -1,10 +1,14 @@
 from fastapi import APIRouter, UploadFile, File
-from services.ai_service import generate_notes
+from services.ai_service import generate_notes, generate_quiz
 from services.pdf_service import extract_text_from_pdf
 import os
 import shutil
+from pydantic import BaseModel
+import json
 
 router = APIRouter()
+class QuizRequest(BaseModel):
+    notes: str
 
 UPLOAD_FOLDER = "uploads"
 
@@ -39,3 +43,15 @@ async def upload_file(file: UploadFile = File(...)):
             "filename": file.filename,
             "notes": notes
         }
+
+@router.post("/generate-quiz")
+async def generate_quiz_api(request: QuizRequest):
+
+    quiz = generate_quiz(request.notes)
+
+    print("Raw AI Response:")
+    print(quiz)
+
+    return {
+        "quiz": quiz
+    }

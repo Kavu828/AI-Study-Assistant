@@ -7,7 +7,16 @@ export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
+
   const [notes, setNotes] = useState("");
+
+  const [quiz, setQuiz] = useState<any[]>([]);
+  const [quizLoading, setQuizLoading] = useState(false);
+
+  const [answers, setAnswers] = useState<{ [key: number]: string }>({});
+  const [score, setScore] = useState<number | null>(null);
+  const [submitted, setSubmitted] = useState(false);  
+
   const uploadImage = async () => {
 
   if (!selectedFile) return;
@@ -45,6 +54,10 @@ setTimeout(() => {
 
 
     setNotes(data.notes);
+    setQuiz([]);
+setAnswers({});
+setScore(null);
+setSubmitted(false);
     setLoadingText("✅ Notes generated successfully!");
 
   } catch (error) {
@@ -58,6 +71,73 @@ setTimeout(() => {
 
   setLoading(false);
 };
+
+const generateQuiz = async () => {
+  if (!notes) return;
+
+  setQuizLoading(true);
+  setAnswers({});
+  setScore(null);
+  setSubmitted(false);
+  setQuiz([]);
+
+  try {
+    const response = await fetch("http://127.0.0.1:8000/generate-quiz", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        notes: notes,
+      }),
+    });
+
+    const data = await response.json();
+
+    console.log("Quiz API Response:", data);
+    console.log("Raw quiz:", data.quiz);
+
+    const quizArray =
+      typeof data.quiz === "string"
+        ? JSON.parse(data.quiz)
+        : data.quiz;
+
+    if (Array.isArray(quizArray)) {
+      setQuiz(quizArray);
+    } else {
+      console.error("Quiz is not an array:", quizArray);
+      setQuiz([]);
+    }
+
+  } catch (error) {
+    console.error(error);
+    alert("Quiz Generation Failed!");
+  } finally {
+    setQuizLoading(false);
+  }
+};
+
+
+    const handleAnswer = (questionIndex: number, option: string) => {
+      setAnswers((prev) => ({
+    ...prev,
+    [questionIndex]: option,
+  }));
+};
+
+const submitQuiz = () => {
+  let marks = 0;
+
+  quiz.forEach((q: any, index: number) => {
+    if (answers[index] === q.answer) {
+      marks++;
+    }
+  });
+
+  setScore(marks);
+  setSubmitted(true);
+};
+
   
   return (
     <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center px-6">
@@ -149,12 +229,94 @@ setTimeout(() => {
 
                 <div className="prose prose-invert max-w-none text-left">
   <ReactMarkdown>{notes}</ReactMarkdown>
+  <button
+  onClick={generateQuiz}
+  disabled={quizLoading}
+  className={`mt-6 px-8 py-3 rounded-xl ${
+    quizLoading
+      ? "bg-gray-500 cursor-not-allowed"
+      : "bg-green-500 hover:bg-green-600"
+  }`}
+>
+  {quizLoading ? "⏳ Generating Quiz..." : "📝 Generate Quiz"}
+</button>
 </div>
               </div>
         )}
 
         </div>
         )}
+        
+  {Array.isArray(quiz) && quiz.length > 0 && (
+  <div className="mt-10 w-full max-w-4xl bg-slate-900 p-6 rounded-xl border border-green-500">
+    <h2 className="text-3xl font-bold text-green-400 mb-6">
+      📝 AI Generated Quiz
+    </h2>
+
+    {quiz.map((q, index) => (
+      <div
+        key={index}
+        className="mb-6 p-4 rounded-lg border border-gray-700"
+      >
+        <h3 className="font-semibold mb-3">
+          {index + 1}. {q.question}
+        </h3>
+
+        {q.options.map((option: string, i: number) => (
+          <div key={i} className="mb-2">
+            <label>
+              <input
+              
+                    type="radio"
+  name={`question-${index}`}
+  value={option}
+  checked={answers[index] === option}
+  disabled={submitted}
+  onChange={() => handleAnswer(index, option)}
+  className="mr-2"
+/>
+            
+              {option}
+            </label>
+          </div>
+        ))}
+
+{submitted && (
+  <div className="mt-4">
+    <p className="text-green-400 font-semibold">
+      ✅ Correct Answer: {q.answer}
+    </p>
+
+    <p className="text-gray-300">
+      {q.explanation}
+    </p>
+  </div>
+)}
+
+      </div>
+    ))}
+
+    {!submitted && (
+  <button
+  onClick={submitQuiz}
+  disabled={Object.keys(answers).length !== quiz.length}
+  className={`mt-6 px-6 py-3 rounded-lg ${
+    Object.keys(answers).length !== quiz.length
+      ? "bg-gray-500 cursor-not-allowed"
+      : "bg-green-600 hover:bg-green-700"
+  }`}
+>
+    Submit Quiz
+  </button>
+)}
+
+{submitted && (
+  <h2 className="mt-6 text-2xl font-bold text-cyan-400">
+    🎯 Score: {score} / {quiz.length}
+  </h2>
+)}
+  </div>
+)}
     </main>
   );
 }

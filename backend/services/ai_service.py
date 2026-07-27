@@ -2,6 +2,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import base64
 import os
+import json
 
 load_dotenv()
 
@@ -53,7 +54,15 @@ Explain everything in simple language for students.
                 ]
             )
 
-            return response.choices[0].message.content
+            content = response.choices[0].message.content.strip()
+
+            if content.startswith("User Safety:"):
+                lines = content.splitlines()
+                while lines and lines[0].startswith("User Safety:"):
+                    lines.pop(0)
+                content = "\n".join(lines).strip()
+
+            return content
 
         # -------- Image --------
         with open(data, "rb") as image_file:
@@ -75,7 +84,7 @@ Generate:
 2. Short summary.
 3. Important key points.
 
-Explain in simple language for students.
+Explain everything in simple language for students.
 """
                         },
                         {
@@ -89,8 +98,97 @@ Explain in simple language for students.
             ]
         )
 
-        return response.choices[0].message.content
+        content = response.choices[0].message.content.strip()
+
+        if content.startswith("User Safety:"):
+            lines = content.splitlines()
+            while lines and lines[0].startswith("User Safety:"):
+                lines.pop(0)
+            content = "\n".join(lines).strip()
+
+        return content
 
     except Exception as e:
         print("OpenRouter Error:", e)
         return f"OpenRouter Error: {e}"
+    
+def generate_quiz(notes):
+    try:
+        response = client.chat.completions.create(
+            model="openrouter/free",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""
+You are an AI Quiz Generator.
+
+Using ONLY the study notes below, generate exactly 15 multiple-choice questions.
+
+Return ONLY a valid JSON array.
+
+The first character must be [
+The last character must be ]
+
+Do not return:
+- User Safety
+- Safety messages
+- Markdown
+- Triple backticks
+- Any explanation before or after the JSON
+
+Format:
+
+[
+  {{
+    "question": "Question here",
+    "options": [
+      "Option A",
+      "Option B",
+      "Option C",
+      "Option D"
+    ],
+    "answer": "Correct Option",
+    "explanation": "Short explanation"
+  }}
+]
+
+Study Notes:
+{notes}
+"""
+                }
+            ]
+        )
+
+        content = response.choices[0].message.content.strip()
+
+        # Remove "User Safety" text
+        if content.startswith("User Safety:"):
+            lines = content.splitlines()
+            while lines and lines[0].startswith("User Safety:"):
+                lines.pop(0)
+            content = "\n".join(lines).strip()
+
+        # Remove markdown
+        content = content.replace("```json", "")
+        content = content.replace("```", "")
+        content = content.strip()
+
+        # Extract JSON array
+        start = content.find("[")
+        end = content.rfind("]")
+
+        if start != -1 and end != -1:
+            content = content[start:end + 1]
+
+        print("========== AI RESPONSE ==========")
+        print(content)
+        print("=================================")
+
+        # Validate JSON
+        quiz = json.loads(content)
+
+        return json.dumps(quiz)
+
+    except Exception as e:
+        print("Quiz Error:", e)
+        return "[]"
