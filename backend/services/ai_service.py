@@ -1,4 +1,6 @@
-from openai import OpenAI
+
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 import base64
 import os
@@ -6,37 +8,26 @@ import json
 
 load_dotenv()
 
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY"),
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
 )
 
-
 def test_ai():
-    response = client.chat.completions.create(
-        model="openrouter/free",
-        messages=[
-            {
-                "role": "user",
-                "content": "Say hello to Kavana. Tell her the AI backend is working."
-            }
-        ]
+    response = client.models.generate_content(
+        model="gemini-flash-latest",
+        contents="Say hello to Kavana. Tell her the AI backend is working."
     )
 
-    return response.choices[0].message.content
-
+    return response.text
 
 def generate_notes(data, is_text=False):
     try:
 
         # -------- PDF/Text --------
         if is_text:
-            response = client.chat.completions.create(
-                model="openrouter/free",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": f"""
+            response = client.models.generate_content(
+    model="gemini-flash-latest",
+    contents=f"""
 You are an AI Study Assistant.
 
 The following is text extracted from a PDF:
@@ -50,11 +41,9 @@ Generate:
 
 Explain everything in simple language for students.
 """
-                    }
-                ]
-            )
+)
 
-            content = response.choices[0].message.content.strip()
+            content = response.text
 
             if content.startswith("User Safety:"):
                 lines = content.splitlines()
@@ -64,19 +53,14 @@ Explain everything in simple language for students.
 
             return content
 
-        # -------- Image --------
-        with open(data, "rb") as image_file:
-            image_base64 = base64.b64encode(image_file.read()).decode("utf-8")
+                # -------- Image --------
+        with open(data, "rb") as f:
+            image_bytes = f.read()
 
-        response = client.chat.completions.create(
-            model="openrouter/free",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": """
+        response = client.models.generate_content(
+            model="gemini-flash-latest",
+            contents=[
+                """
 Analyze this study image.
 
 Generate:
@@ -85,20 +69,15 @@ Generate:
 3. Important key points.
 
 Explain everything in simple language for students.
-"""
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{image_base64}"
-                            }
-                        }
-                    ]
-                }
+""",
+                types.Part.from_bytes(
+                    data=image_bytes,
+                    mime_type="image/jpeg"
+                )
             ]
         )
 
-        content = response.choices[0].message.content.strip()
+        content = response.text
 
         if content.startswith("User Safety:"):
             lines = content.splitlines()
@@ -114,52 +93,46 @@ Explain everything in simple language for students.
     
 def generate_quiz(notes):
     try:
-        response = client.chat.completions.create(
-            model="openrouter/free",
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"""
+        response = client.models.generate_content(
+    model="gemini-flash-latest",
+    contents=f"""
 You are an AI Quiz Generator.
 
 Using ONLY the study notes below, generate exactly 15 multiple-choice questions.
 
 Return ONLY a valid JSON array.
 
-The first character must be [
-The last character must be ]
-
-Do not return:
-- User Safety
-- Safety messages
-- Markdown
-- Triple backticks
-- Any explanation before or after the JSON
-
-Format:
+Each question MUST follow this exact format:
 
 [
   {{
-    "question": "Question here",
+    "question": "Question text",
     "options": [
-      "Option A",
-      "Option B",
-      "Option C",
-      "Option D"
+      "Option 1",
+      "Option 2",
+      "Option 3",
+      "Option 4"
     ],
-    "answer": "Correct Option",
+    "answer": "One of the four options exactly as written above",
     "explanation": "Short explanation"
   }}
 ]
 
+Rules:
+- Exactly 15 questions.
+- Exactly 4 options per question.
+- The value of "answer" MUST be an exact copy of one of the options.
+- Do NOT use option letters like A, B, C, or D.
+- Do NOT add extra spaces, punctuation, or markdown.
+- Return ONLY the JSON array.
+
 Study Notes:
+
 {notes}
 """
-                }
-            ]
-        )
+)
 
-        content = response.choices[0].message.content.strip()
+        content = response.text.strip()
 
         # Remove "User Safety" text
         if content.startswith("User Safety:"):

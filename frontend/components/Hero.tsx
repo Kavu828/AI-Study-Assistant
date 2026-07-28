@@ -1,3 +1,4 @@
+import Link from "next/link";
 export default function Hero() {
   return (
     <section className="flex flex-col items-center justify-center text-center mt-24 px-6">
@@ -11,13 +12,19 @@ export default function Hero() {
       </p>
 
       <div className="mt-10 flex gap-6">
-        <button className="bg-cyan-500 px-8 py-4 rounded-xl hover:bg-cyan-600">
-          📷 Upload Image
-        </button>
+        <Link
+  href="/upload"
+  className="bg-cyan-500 px-8 py-4 rounded-xl hover:bg-cyan-600"
+>
+  📷 Upload Image
+</Link>
 
-        <button className="bg-purple-600 px-8 py-4 rounded-xl hover:bg-purple-700">
-          🎥 Upload Video
-        </button>
+<Link
+  href="/upload"
+  className="bg-purple-500 px-8 py-4 rounded-xl hover:bg-purple-600"
+>
+  🎥 Upload Video
+</Link>
       </div>
     </section>
   );

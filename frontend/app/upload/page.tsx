@@ -129,15 +129,27 @@ const submitQuiz = () => {
   let marks = 0;
 
   quiz.forEach((q: any, index: number) => {
-    if (answers[index] === q.answer) {
+    console.log("--------------------");
+    console.log("Question:", q.question);
+    console.log("Selected:", answers[index]);
+    console.log("Correct :", q.answer);
+
+    if (
+      answers[index]?.trim().toLowerCase() ===
+      q.answer?.trim().toLowerCase()
+    ) {
+      console.log("✅ MATCH");
       marks++;
+    } else {
+      console.log("❌ NOT MATCH");
     }
   });
+
+  console.log("Final Score:", marks);
 
   setScore(marks);
   setSubmitted(true);
 };
-
   
   return (
     <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center px-6">
