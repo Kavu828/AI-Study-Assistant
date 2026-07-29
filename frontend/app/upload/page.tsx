@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
+
+type QuizQuestion = {
+  question: string;
+  options: string[];
+  answer: string;
+  explanation: string;
+};
+
 export default function UploadPage() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -10,7 +18,7 @@ export default function UploadPage() {
 
   const [notes, setNotes] = useState("");
 
-  const [quiz, setQuiz] = useState<any[]>([]);
+  const [quiz, setQuiz] = useState<QuizQuestion[]>([]);
   const [quizLoading, setQuizLoading] = useState(false);
 
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
@@ -64,12 +72,9 @@ setSubmitted(false);
 
     console.error(error);
     alert("Upload Failed!");
-
   } finally {
-      setLoading(false);
-  }
-
   setLoading(false);
+}
 };
 
 const generateQuiz = async () => {
@@ -94,20 +99,25 @@ const generateQuiz = async () => {
 
     const data = await response.json();
 
-    console.log("Quiz API Response:", data);
-    console.log("Raw quiz:", data.quiz);
+const quizArray =
+  typeof data.quiz === "string"
+    ? JSON.parse(data.quiz)
+    : data.quiz;
 
-    const quizArray =
-      typeof data.quiz === "string"
-        ? JSON.parse(data.quiz)
-        : data.quiz;
+if (Array.isArray(quizArray)) {
+  quizArray.forEach((q: QuizQuestion, i: number) => {
+    console.log("----------------------");
+    console.log(i + 1);
+    console.log("Question:", q.question);
+    console.log("Options:", q.options);
+    console.log("Answer:", q.answer);
+  });
 
-    if (Array.isArray(quizArray)) {
-      setQuiz(quizArray);
-    } else {
-      console.error("Quiz is not an array:", quizArray);
-      setQuiz([]);
-    }
+  setQuiz(quizArray);
+} else {
+  console.error("Quiz is not an array:", quizArray);
+  setQuiz([]);
+}
 
   } catch (error) {
     console.error(error);
@@ -128,20 +138,18 @@ const generateQuiz = async () => {
 const submitQuiz = () => {
   let marks = 0;
 
-  quiz.forEach((q: any, index: number) => {
-    console.log("--------------------");
+  quiz.forEach((q: QuizQuestion, index: number) => {
+    console.log("================================");
     console.log("Question:", q.question);
-    console.log("Selected:", answers[index]);
-    console.log("Correct :", q.answer);
+    console.log("Options:", q.options);
+    console.log("Selected:", JSON.stringify(answers[index]));
+    console.log("Correct :", JSON.stringify(q.answer));
 
     if (
       answers[index]?.trim().toLowerCase() ===
       q.answer?.trim().toLowerCase()
     ) {
-      console.log("✅ MATCH");
       marks++;
-    } else {
-      console.log("❌ NOT MATCH");
     }
   });
 
@@ -150,7 +158,7 @@ const submitQuiz = () => {
   setScore(marks);
   setSubmitted(true);
 };
-  
+
   return (
     <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center px-6">
 
@@ -274,29 +282,62 @@ const submitQuiz = () => {
           {index + 1}. {q.question}
         </h3>
 
-        {q.options.map((option: string, i: number) => (
-          <div key={i} className="mb-2">
-            <label>
-              <input
-              
-                    type="radio"
-  name={`question-${index}`}
-  value={option}
-  checked={answers[index] === option}
-  disabled={submitted}
-  onChange={() => handleAnswer(index, option)}
-  className="mr-2"
-/>
-            
-              {option}
-            </label>
-          </div>
-        ))}
+        {q.options.map((option: string, i: number) => {
+  const isCorrect = option === q.answer;
+  const isSelected = answers[index] === option;
 
-{submitted && (
+  return (
+    <div
+      key={i}
+      className={`mb-2 p-2 rounded-lg ${
+        submitted
+          ? isCorrect
+            ? "bg-green-100 border border-green-500 text-green-800"
+            : isSelected
+            ? "bg-red-100 border border-red-500 text-red-800"
+            : ""
+          : ""
+      }`}
+    >
+      <label className="flex items-center">
+        <input
+          type="radio"
+          name={`question-${index}`}
+          value={option}
+          checked={isSelected}
+          disabled={submitted}
+          onChange={() => handleAnswer(index, option)}
+          className="mr-2"
+        />
+
+        {option}
+      </label>
+    </div>
+  );
+})}
+
+  {submitted && (
   <div className="mt-4">
-    <p className="text-green-400 font-semibold">
-      ✅ Correct Answer: {q.answer}
+    <p>
+      <strong>Your Answer:</strong> {answers[index]}
+    </p>
+
+    <p>
+      <strong>Correct Answer:</strong> {q.answer}
+    </p>
+
+    <p
+      className={
+        answers[index]?.trim().toLowerCase() ===
+        q.answer?.trim().toLowerCase()
+          ? "text-green-400"
+          : "text-red-400"
+      }
+    >
+      {answers[index]?.trim().toLowerCase() ===
+      q.answer?.trim().toLowerCase()
+        ? "✅ Correct"
+        : "❌ Wrong"}
     </p>
 
     <p className="text-gray-300">
