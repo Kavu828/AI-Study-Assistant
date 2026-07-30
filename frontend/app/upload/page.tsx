@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
@@ -159,11 +158,26 @@ const submitQuiz = () => {
   setSubmitted(true);
 };
 
+const retakeQuiz = () => {
+  setAnswers({});
+  setScore(null);
+  setSubmitted(false);
+};
+
+const uploadAnotherFile = () => {
+  setSelectedFile(null);
+  setNotes("");
+  setQuiz([]);
+  setAnswers({});
+  setScore(null);
+  setSubmitted(false);
+};
+
   return (
     <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center px-6">
 
       <h1 className="text-5xl font-bold text-cyan-400 mb-6">
-        Upload Your Study Material
+        AI Study Assistant
       </h1>
 
       <p className="text-gray-300 text-center max-w-2xl mb-10">
@@ -249,6 +263,7 @@ const submitQuiz = () => {
 
                 <div className="prose prose-invert max-w-none text-left">
   <ReactMarkdown>{notes}</ReactMarkdown>
+
   <button
   onClick={generateQuiz}
   disabled={quizLoading}
@@ -363,13 +378,57 @@ const submitQuiz = () => {
   </button>
 )}
 
+
 {submitted && (
-  <h2 className="mt-6 text-2xl font-bold text-cyan-400">
-    🎯 Score: {score} / {quiz.length}
-  </h2>
-)}
+  <div className="mt-6 text-center">
+    <h2 className="text-2xl font-bold text-cyan-400">
+  🎯 Score: {score} / {quiz.length}
+</h2>
+
+<p className="mt-2 text-lg text-yellow-400">
+  Accuracy: {Math.round(((score ?? 0) / quiz.length) * 100)}%
+</p>
+
+<p className="mt-3 text-xl font-semibold">
+  {(() => {
+    const percentage = Math.round(((score ?? 0) / quiz.length) * 100);
+
+    if (percentage >= 90)
+      return "🌟 Excellent! Outstanding work.";
+
+    if (percentage >= 75)
+      return "🎉 Very Good! Keep it up.";
+
+    if (percentage >= 50)
+      return "👍 Good! A little more practice will help.";
+
+    return "📚 Keep Practicing! Review your notes and try again.";
+  })()}
+</p>
+
+    <div className="mt-6 flex justify-center gap-4">
+      <button
+        onClick={retakeQuiz}
+        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+      >
+        🔄 Retake Quiz
+      </button>
+
+      <button
+        onClick={uploadAnotherFile}
+        className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition"
+      >
+        📁 Upload Another File
+      </button>
+    </div>
   </div>
 )}
+
+  </div>
+)}
+
+
     </main>
   );
 }
+
